@@ -157,6 +157,18 @@ window.onload = function () {
         r.text(x - 15, y, (82 - i)).attr(txt).toBack();
     }
 
+    // X axis
+    var monthSize = (width - leftgutter) / 3;
+    r.text(monthSize / 2 + leftgutter, height - 6, "Апрель").attr(txt).toBack();
+    r.text(3 * monthSize / 2 + leftgutter, height - 6, "Май").attr(txt).toBack();
+    r.text(5 * monthSize / 2 + leftgutter, height - 6, "Июнь").attr(txt).toBack();
+
+    for(var i = 0; i < 13; i++) {
+        var x = Math.round(leftgutter + X * .5);
+        var y = Math.round(topgutter + Y * i);
+        r.text(x - 15, y, (82 - i)).attr(txt).toBack();
+    }
+
     // plan
     var planX1 = leftgutter + X * .5,
         planY1 = topgutter,
