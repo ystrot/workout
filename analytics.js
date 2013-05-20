@@ -47,19 +47,56 @@ var RUN_COLOR    = "#FFB473";
 var TRAIN_COLOR  = "#FF6700";
 var TRAUMA_COLOR = "#FF0000";
 
-function getDateByIndex(index) {
-  var days = [30, 31, 30];
-  var mons = ["Апреля", "Мая", "Июня"];
-  var stepIndex = Math.floor(index);
+var days = [];
+var months = [];
+var weekCount = 0;
+var dayCount = 0;
+var firstDay = 0;
+var max = 0;
+var min = 1000;
+var planFrom = 0;
+var planTo = 0;
+var lgdText = [];
 
-  for(var i = 0; days.length; i++) {
-    if (stepIndex < days[i]) {
-      return (stepIndex + 1) + " " + mons[i] + " 2013";
+function init() {
+    var parts = $("#duration").html().split(",");
+    for (var i = 0; i < parts.length; i++) {
+        var part = $.trim(parts[i]);
+        var md = part.split(":");
+        months.push($.trim(md[0]));
+        var day = parseInt($.trim(md[1]));
+        days.push(day);
+        dayCount += day;
     }
-    stepIndex -= days[i];
-  }
-  throw ("Invalid index: " + index);
+    firstDay = parseInt($("#firstDay").html()) - 1;
+    dayCount -= firstDay;
+    weekCount = Math.ceil(dayCount / 7);
+    dayCount = weekCount * 7;
+    var plan = $("#plan").html().split("-");
+    planFrom = addValue(parseInt(plan[0]));
+    planTo = addValue(parseInt(plan[1]));
+    if ($("#legend").length > 0) {
+        lgdText = $("#legend").html().split(", ");
+    }
+}
 
+function getDateByIndex(index) {
+    index += firstDay;
+    var stepIndex = Math.floor(index);
+
+    for(var i = 0; days.length; i++) {
+        if (stepIndex < days[i]) {
+            var month = months[i];
+            if (month.charAt(month.length - 1) == 'т') {
+                month += "а";
+            } else {
+                month = month.substring(0, month.length - 1) + "я";
+            }
+            return (stepIndex + 1) + " " + month + " 2013";
+        }
+        stepIndex -= days[i];
+    }
+    throw ("Invalid index: " + index);
 }
 
 function processData(input) {
@@ -86,14 +123,21 @@ function processData(input) {
                 var doubleNum = part.split("-");
                 var first  = $.trim(doubleNum[0]);
                 var second = $.trim(doubleNum[1]);
-                data.push(new Point(count++, first, color));
-                data.push(new Point(count - .7, getLowStr(first, second), RUN_COLOR));
+                second = getLowStr(first, second);
+                data.push(new Point(count++, addValue(first), color));
+                data.push(new Point(count - .7, addValue(second), RUN_COLOR));
             } else {
-                data.push(new Point(count++, part, color));
+                data.push(new Point(count++, addValue(part), color));
             }
         }
     }
     return data;
+}
+
+function addValue(val) {
+    min = Math.min(min, Math.floor(val));
+    max = Math.max(max, Math.ceil(val));
+    return val;
 }
 
 function getLowStr(n1, sub) {
@@ -110,12 +154,12 @@ function Point(day, val, color) {
 
 window.onload = function () {
     // Fill data
+    init();
     var input = [];
     $("#data tbody td").each(function () {
     	input.push($(this).html());
-    });    
+    });
     var data = processData(input);
-    var pointsCount = 30 + 31 + 30;
 
     // Draw
     var width = 1200,
@@ -128,13 +172,12 @@ window.onload = function () {
         txt = {font: '12px Helvetica, Arial', fill: "#fff"},
         txt1 = {font: '10px Helvetica, Arial', fill: "#fff"},
         txt2 = {font: '12px Helvetica, Arial', fill: "#000"},
-        X = (width - leftgutter) / pointsCount,
-        max = 82,
-        min = 70,
+        X = (width - leftgutter) / dayCount,
+        yCount = max - min,
         Y = (height - bottomgutter - topgutter) / (max - min);
 
     // Grid
-    r.drawGrid(leftgutter + X * .5 + .5, topgutter + .5, width - leftgutter - X, height - topgutter - bottomgutter, 13, 12, "#000");
+    r.drawGrid(leftgutter + X * .5 + .5, topgutter + .5, width - leftgutter - X, height - topgutter - bottomgutter, weekCount, yCount, "#000");
 
     var path = r.path().attr({stroke: color, "stroke-width": 2, "stroke-linejoin": "round"}),
         bgp = r.path().attr({stroke: "none", opacity: .3, fill: color}),
@@ -149,29 +192,27 @@ window.onload = function () {
     var frame = r.popup(100, 100, label, "right").attr({fill: "#000", stroke: "#666", "stroke-width": 2, "fill-opacity": .7}).hide();
 
     // Y axis
-    for(var i = 0; i < 13; i++) {
+    for(var i = 0; i < yCount + 1; i++) {
         var x = Math.round(leftgutter + X * .5);
         var y = Math.round(topgutter + Y * i);
-        r.text(x - 15, y, (82 - i)).attr(txt).toBack();
+        r.text(x - 15, y, (max - i)).attr(txt).toBack();
     }
 
     // X axis
-    var monthSize = (width - leftgutter) / 3;
-    r.text(monthSize / 2 + leftgutter, height - 6, "Апрель").attr(txt).toBack();
-    r.text(3 * monthSize / 2 + leftgutter, height - 6, "Май").attr(txt).toBack();
-    r.text(5 * monthSize / 2 + leftgutter, height - 6, "Июнь").attr(txt).toBack();
-
-    for(var i = 0; i < 13; i++) {
-        var x = Math.round(leftgutter + X * .5);
-        var y = Math.round(topgutter + Y * i);
-        r.text(x - 15, y, (82 - i)).attr(txt).toBack();
+    var monthShift = 0;
+    for (var i = 0; i < days.length; i++) {
+        var monthDay = days[i];
+        if (i == 0) monthDay -= firstDay;
+        var monthSize = (width - leftgutter) * monthDay / dayCount;
+        r.text(monthShift + monthSize / 2 + leftgutter, height - 6, months[i]).attr(txt).toBack();
+        monthShift += monthSize;
     }
 
     // plan
     var planX1 = leftgutter + X * .5,
-        planY1 = topgutter,
+        planY1 = Math.round(height - bottomgutter - Y * (planFrom - min)),
         planX2 = width - 5,
-        planY2 = height - bottomgutter;
+        planY2 = Math.round(height - bottomgutter - Y * (planTo - min));
 
     var plan = ["M", planX1, planY1, "L", planX2, planY2];
     r.path(plan).attr({stroke: PLAN_COLOR, "stroke-width": 2, "stroke-linejoin": "round"});
@@ -179,16 +220,17 @@ window.onload = function () {
     r.circle(planX2, planY2, 3).attr({fill: PLAN_COLOR, stroke: "none"});
 
     // legend
-    var legendTxt = {font: '12px Helvetica, Arial', fill: "#fff", 'text-anchor': 'start'};
-    var lgdX = leftgutter + X * 9 * 7 - 1;
-    var lgdY = topgutter + Y + 1;
-    r.rect(lgdX, lgdY, X * 7 * 2 - 3, Y * 3 - 1).attr({fill: "#333", stroke: "none", opacity: 1});
-    var lgdText   = ["Цель", "Утренний вес", "Дни тренировок", "Вес после пробежки", "Травма"];
-    var lgdColors = [PLAN_COLOR, USUAL_COLOR, TRAIN_COLOR, RUN_COLOR, TRAUMA_COLOR];
-    for(var i = 0; i < lgdText.length; i++) {
-        var y = lgdY + 20 + 25 * i;
-        r.circle(lgdX + 20, y, 5).attr({fill: lgdColors[i], stroke: "none"});
-        r.text(lgdX + 35, y, lgdText[i]).attr(legendTxt).toFront();
+    if (lgdText.length > 0) {
+        var legendTxt = {font: '12px Helvetica, Arial', fill: "#fff", 'text-anchor': 'start'};
+        var lgdX = leftgutter + X * 9 * 7 - 1;
+        var lgdY = topgutter + Y + 1;
+        r.rect(lgdX, lgdY, X * 7 * 2 - 3, Y * 3 - 1).attr({fill: "#333", stroke: "none", opacity: 1});
+        var lgdColors = [PLAN_COLOR, USUAL_COLOR, TRAIN_COLOR, RUN_COLOR, TRAUMA_COLOR];
+        for(var i = 0; i < lgdText.length; i++) {
+            var y = lgdY + 20 + 25 * i;
+            r.circle(lgdX + 20, y, 5).attr({fill: lgdColors[i], stroke: "none"});
+            r.text(lgdX + 35, y, lgdText[i]).attr(legendTxt).toFront();
+        }
     }
 
     // data
