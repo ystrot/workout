@@ -46,6 +46,7 @@ var LINE_COLOR   = "#01939A";
 var RUN_COLOR    = "#FFB473";
 var TRAIN_COLOR  = "#FF6700";
 var TRAUMA_COLOR = "#FF0000";
+var NIGHT_COLOR = "#C7EB38";
 
 var days = [];
 var months = [];
@@ -119,15 +120,29 @@ function processData(input) {
                 part = part.substring(0, part.length - 1);
                 color = TRAUMA_COLOR;
             }
+            var up = null, down = null;
             if (part.indexOf("-") > 0) {
                 var doubleNum = part.split("-");
-                var first  = $.trim(doubleNum[0]);
-                var second = $.trim(doubleNum[1]);
-                second = getLowStr(first, second);
-                data.push(new Point(count++, addValue(first), color));
-                data.push(new Point(count - .7, addValue(second), RUN_COLOR));
-            } else {
-                data.push(new Point(count++, addValue(part), color));
+                part = $.trim(doubleNum[0]);
+                down = $.trim(doubleNum[1]);
+            }
+            if (part.indexOf("+") > 0)
+            {
+                var doubleNum = part.split("+");
+                part = $.trim(doubleNum[0]);
+                up = $.trim(doubleNum[1]);
+            }
+            data.push(new Point(count++, addValue(part), color));
+            part *= 10;
+            var shift = .7;
+            if (up) {
+                part += parseInt(up);
+                data.push(new Point(count - .7, addValue(formStr(part)), NIGHT_COLOR));
+                shift = .5;
+            }
+            if (down) {
+                part -= parseInt(down);
+                data.push(new Point(count - shift, addValue(formStr(part)), RUN_COLOR));
             }
         }
     }
@@ -140,9 +155,8 @@ function addValue(val) {
     return val;
 }
 
-function getLowStr(n1, sub) {
-    var n10 = n1 * 10 - sub;
-    return Math.floor(n10 / 10) + "." + n10 % 10;
+function formStr(val) {
+    return Math.floor(val / 10) + "." + val % 10;
 }
 
 function Point(day, val, color) {
@@ -225,9 +239,9 @@ window.onload = function () {
         var lgdX = leftgutter + X * 9 * 7 - 1;
         var lgdY = topgutter + Y + 1;
         r.rect(lgdX, lgdY, X * 7 * 2 - 3, Y * 3 - 1).attr({fill: "#333", stroke: "none", opacity: 1});
-        var lgdColors = [PLAN_COLOR, USUAL_COLOR, TRAIN_COLOR, RUN_COLOR, TRAUMA_COLOR];
+        var lgdColors = [PLAN_COLOR, USUAL_COLOR, NIGHT_COLOR, TRAIN_COLOR, RUN_COLOR, TRAUMA_COLOR];
         for(var i = 0; i < lgdText.length; i++) {
-            var y = lgdY + 20 + 25 * i;
+            var y = lgdY + 20 + 20 * i;
             r.circle(lgdX + 20, y, 5).attr({fill: lgdColors[i], stroke: "none"});
             r.text(lgdX + 35, y, lgdText[i]).attr(legendTxt).toFront();
         }
